@@ -46,7 +46,8 @@ namespace Charasiew.ECS
         {
             foreach (var (mass, initFlag) in SystemAPI.Query<RefRW<PhysicsMass>, EnabledRefRW<InitializeCharacterFlag>>())
             {
-                
+                mass.ValueRW.InverseInertia = float3.zero;
+                initFlag.ValueRW = false;           // 状态更新
             }
         }
     }
