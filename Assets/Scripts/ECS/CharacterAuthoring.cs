@@ -8,12 +8,12 @@ using UnityEngine;
 
 namespace Charasiew.ECS
 {
-    public class CharacterMoveDirection : IComponentData
+    public struct CharacterMoveDirection : IComponentData
     {
        public float2 value;
     }
 
-    public class CharacterMoveSpeed : IComponentData
+    public struct CharacterMoveSpeed : IComponentData
     {
         public float value;
     }
@@ -27,8 +27,8 @@ namespace Charasiew.ECS
             public override void Bake(CharacterAuthoring authoring)
             {
                 Entity entity = GetEntity(TransformUsageFlags.Dynamic);
-                AddComponent<CharacterMoveDirection>(entity);
-                AddComponent<CharacterMoveSpeed>(entity);
+                AddComponent(entity, new CharacterMoveDirection());
+                AddComponent(entity, new CharacterMoveSpeed { value = authoring.moveSpeed });
             }
         }
     }
