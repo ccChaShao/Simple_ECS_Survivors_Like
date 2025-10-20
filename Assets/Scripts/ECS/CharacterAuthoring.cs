@@ -8,6 +8,8 @@ using UnityEngine;
 
 namespace Charasiew.ECS
 {
+    public struct InitializeCharacterFlag: IComponentData, IEnableableComponent { }
+    
     public struct CharacterMoveDirection : IComponentData
     {
        public float2 value;
@@ -33,6 +35,18 @@ namespace Charasiew.ECS
         }
     }
 
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    public partial struct CharacterInitializeSystem : ISystem
+    {
+        public void OnUpdate(ref SystemState state)
+        {
+            foreach (var (mass, initFlag) in SystemAPI.Query<RefRW<PhysicsMass>, EnabledRefRW<InitializeCharacterFlag>>())
+            {
+                
+            }
+        }
+    }
+    
     public partial struct CharacterMoveSystem : ISystem
     {
         public void OnUpdate(ref SystemState state)
