@@ -35,6 +35,10 @@ namespace Charasiew.ECS
         }
     }
 
+    /// <summary>
+    /// 角色初始化系统
+    /// （放在初始化系统组，保证在比较前的位置执行）
+    /// </summary>
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct CharacterInitializeSystem : ISystem
     {
