@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -36,14 +37,10 @@ namespace Charasiew.ECS
     {
         public void OnUpdate(ref SystemState state)
         {
-            float deltaTime = SystemAPI.Time.DeltaTime;
-
-            foreach (var (localTransform, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<LocalTransform>, CharacterMoveDirection, CharacterMoveSpeed>())
+            foreach (var (physicsVelocity, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<PhysicsVelocity>, CharacterMoveDirection, CharacterMoveSpeed>())
             {
-                // 移动差值
-                var moveDiff = moveDirection.value * moveSpeed.value * deltaTime;
-                // 移动执行
-                localTransform.ValueRW.Position += new float3(moveDiff, 0);
+                var move2 = moveDirection.value * moveSpeed.value;
+                physicsVelocity.ValueRW.Linear = new float3(move2, 0);
             }
         }
     }
