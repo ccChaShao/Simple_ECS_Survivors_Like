@@ -37,7 +37,6 @@ namespace Charasiew.ECS
             {
                 direction.ValueRW.value = curInput;
             }
-            Debug.Log("charsiew : [OnUpdate] : --------------------" + curInput);
         }
     }
 }
