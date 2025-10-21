@@ -33,6 +33,7 @@ namespace Charasiew.ECS
         public float value;
     }
     
+    [RequireComponent(typeof(CharacterAuthoring))]
     public class PlayerAuthoring : MonoBehaviour
     {
         private class Baker: Baker<PlayerAuthoring>
