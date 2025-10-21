@@ -8,6 +8,11 @@ using Unity.Rendering;
 using Unity.Transforms;
 using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Serialization;
+
+// 在 Unity ECS 中，
+// IComponentData和 IBufferElementData是两种核心的组件类型，它们最根本的区别在于：
+// IComponentData每个实体只能持有该类型组件的一个实例（单值），而 IBufferElementData则允许实体持有该类型的多个元素，形成一个动态数组；
 
 namespace Charasiew.ECS
 {
@@ -23,16 +28,31 @@ namespace Charasiew.ECS
         public float value;
     }
 
-    // 定义一个组件，将其与着色器属性 "_FacintDirection" 关联，通过材质控制朝向
     [MaterialProperty("_FacingDirection")]
     public struct FacingDirectionOverride : IComponentData
     {
         public float value;
     }
+
+    public struct CharacterMaxHitPoints : IComponentData
+    {
+        public float value;
+    }
+
+    public struct CharacterCurrentHitPoint : IComponentData
+    {
+        public float value;
+    }
+
+    public struct DamgeThisFrame : IBufferElementData
+    {
+        public int value;
+    }
     
     public class CharacterAuthoring : MonoBehaviour
     {
         public float moveSpeed = 5.0f;
+        public float maxhitPoint = 10.0f;
         
         private class Baker : Baker<CharacterAuthoring>
         {
@@ -42,7 +62,10 @@ namespace Charasiew.ECS
                 AddComponent(entity, new CharacterMoveDirection());
                 AddComponent(entity, new InitializeCharacterFlag());
                 AddComponent(entity, new CharacterMoveSpeed { value = authoring.moveSpeed });
-                AddComponent(entity, new FacingDirectionOverride { value = -1 });
+                AddComponent(entity, new FacingDirectionOverride { value = 1 });
+                AddComponent(entity, new CharacterMaxHitPoints { value = authoring.maxhitPoint });
+                AddComponent(entity, new CharacterCurrentHitPoint { value = authoring.maxhitPoint });
+                AddBuffer<DamgeThisFrame>(entity);
             }
         }
     }
@@ -105,6 +128,9 @@ namespace Charasiew.ECS
         }
     }
     
+    /// <summary>
+    /// 全局时间系统
+    /// </summary>
     public partial struct GlobalTimeUpdateSystem: ISystem
     {
         private static int globalTimeShaderPropertyID;          // 存储全局时间的shaderID
@@ -117,6 +143,24 @@ namespace Charasiew.ECS
         public void OnUpdate(ref SystemState state)
         {
             Shader.SetGlobalFloat(globalTimeShaderPropertyID, (float)SystemAPI.Time.ElapsedTime);
+        }
+    }
+    
+    public partial struct ProcessDamgeThisFrameSystem : ISystem
+    {
+        [BurstCompile]
+        public void OnUpdate(ref SystemState state)
+        {
+            foreach (var (hitPoint, damgeThisFrame) in SystemAPI.Query<RefRW<CharacterCurrentHitPoint>, DynamicBuffer<DamgeThisFrame>>())
+            {
+                if (damgeThisFrame.IsEmpty)
+                    continue;
+                foreach (var damge in damgeThisFrame)
+                {
+                    hitPoint.ValueRW.value -= damge.value;
+                }
+                damgeThisFrame.Clear();
+            }
         }
     }
 }
