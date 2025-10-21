@@ -3,6 +3,7 @@ using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using Unity.Physics.Systems;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -82,13 +83,22 @@ namespace Charasiew.ECS
         }
     }
     
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    [UpdateAfter(typeof(PhysicsSystemGroup))]           // 在物理组更新完后执行
+    [UpdateBefore(typeof(AfterPhysicsSystemGroup))]
     public partial struct EnemyAttackSystem : ISystem
     {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<SimulationSingleton>();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             // 自游戏开始后所经过的时间
             double elapsedTime = SystemAPI.Time.ElapsedTime;           
-            // 攻击CD更新
+            // 攻击CD处理
             foreach (var (expirationTimestamp, cooldownEnable) in SystemAPI.Query<EnemyCoolDownExpirationTimestamp, EnabledRefRW<EnemyCoolDownExpirationTimestamp>>())
             {
                 if (expirationTimestamp.value > elapsedTime) 
@@ -96,15 +106,31 @@ namespace Charasiew.ECS
                 // CD到达后，关闭组件；
                 cooldownEnable.ValueRW = false;
             }
+            // 攻击job执行
+            //TODO 元宝理解
+            var attackJob = new EnemyAttackJob
+            {
+                playerTagLookup = SystemAPI.GetComponentLookup<PlayerTag>(true),
+                attackDataLoopup = SystemAPI.GetComponentLookup<EnemyAttackData>(true),
+                cooldownLookup = SystemAPI.GetComponentLookup<EnemyCoolDownExpirationTimestamp>(),
+                damageLookup = SystemAPI.GetBufferLookup<DamgeThisFrame>(),
+                elapsedTime = elapsedTime,
+            };
+            var simulationSingleton = SystemAPI.GetSingleton<SimulationSingleton>();
+            state.Dependency = attackJob.Schedule(simulationSingleton, state.Dependency);
         }
     }
 
+    //TODO 元宝理解
+    [BurstCompile]
     public struct EnemyAttackJob : ICollisionEventsJob
     {
         // 用于通过实体（Entity）高效地查找和访问特定类型的组件（Component）数据；   
         [ReadOnly] public ComponentLookup<PlayerTag> playerTagLookup;
         [ReadOnly] public ComponentLookup<EnemyAttackData> attackDataLoopup;
-        [ReadOnly] public ComponentLookup<EnemyCoolDownExpirationTimestamp> cooldownExpirationTimestampLookup;
+        public ComponentLookup<EnemyCoolDownExpirationTimestamp> cooldownLookup;
+        public BufferLookup<DamgeThisFrame> damageLookup;
+        public double elapsedTime;
         
         public void Execute(CollisionEvent collisionEvent)
         {
@@ -126,14 +152,24 @@ namespace Charasiew.ECS
             {
                 return;
             }
-
             // 组件打开，代表处于CD中
-            if (cooldownExpirationTimestampLookup.IsComponentEnabled(enemyEntity))
+            if (cooldownLookup.IsComponentEnabled(enemyEntity))
             {
                 return;
             }
-
             EnemyAttackData attackData = attackDataLoopup[enemyEntity];
+            // CD更新
+            cooldownLookup[enemyEntity] = new EnemyCoolDownExpirationTimestamp
+            {
+                value = elapsedTime + attackData.cooldownTime           // 当前时间 + 冷却时间
+            };
+            cooldownLookup.SetComponentEnabled(enemyEntity, true);
+            // 添加伤害
+            var playerDamgeBuffer = damageLookup[playerEntity];
+            playerDamgeBuffer.Add(new DamgeThisFrame
+            {
+                value = attackData.hitPoints
+            });
         }
     }
 }

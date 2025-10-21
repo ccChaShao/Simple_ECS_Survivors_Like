@@ -46,7 +46,7 @@ namespace Charasiew.ECS
 
     public struct DamgeThisFrame : IBufferElementData
     {
-        public int value;
+        public float value;
     }
     
     public class CharacterAuthoring : MonoBehaviour

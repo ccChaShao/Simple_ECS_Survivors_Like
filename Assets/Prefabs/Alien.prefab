@@ -15,7 +15,7 @@ GameObject:
   - component: {fileID: 5358243757293908693}
   - component: {fileID: 4215533994245577685}
   - component: {fileID: 482808324403162967}
-  m_Layer: 0
+  m_Layer: 7
   m_Name: Alien
   m_TagString: Untagged
   m_Icon: {fileID: 0}
@@ -161,3 +161,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fb7a8a2e410b4880b6a629f5d8e912c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackDamge: 5
+  cooldownTime: 1
