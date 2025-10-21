@@ -8,15 +8,37 @@ namespace Charasiew.ECS
 {
     public struct PlayerTag : IComponentData { }
     
+    public struct InititalizeCameraTargetTag : IComponentData { }
+
+    public struct CameraTarget : IComponentData
+    {
+        public UnityObjectRef<Transform> cameraTransform;           // ecs引用unity对象的类型
+    }
+    
     public class PlayerAuthoring : MonoBehaviour
     {
         private class Baker: Baker<PlayerAuthoring>
         {
             public override void Bake(PlayerAuthoring authoring)
             {
-                var entity = GetEntity(TransformUsageFlags.Dynamic);
+                Entity entity = GetEntity(TransformUsageFlags.Dynamic);
                 AddComponent<PlayerTag>(entity);
+                AddComponent<InititalizeCameraTargetTag>(entity);
+                AddComponent<CameraTarget>(entity);
             }
+        }
+    }
+
+    /// <summary>
+    /// 相机初始化系统
+    /// （放在初始化系统组，保证在比较前的位置执行）
+    /// </summary>
+    [UpdateInGroup(typeof(InitializationSystemGroup))]
+    public partial struct CameraInititalizationSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            
         }
     }
     

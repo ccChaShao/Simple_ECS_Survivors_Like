@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
@@ -31,6 +32,7 @@ namespace Charasiew.ECS
                 Entity entity = GetEntity(TransformUsageFlags.Dynamic);
                 AddComponent(entity, new CharacterMoveDirection());
                 AddComponent(entity, new CharacterMoveSpeed { value = authoring.moveSpeed });
+                AddComponent(entity, new InitializeCharacterFlag());
             }
         }
     }
@@ -42,6 +44,7 @@ namespace Charasiew.ECS
     [UpdateInGroup(typeof(InitializationSystemGroup))]
     public partial struct CharacterInitializeSystem : ISystem
     {
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             foreach (var (mass, initFlag) in SystemAPI.Query<RefRW<PhysicsMass>, EnabledRefRW<InitializeCharacterFlag>>())
@@ -52,14 +55,18 @@ namespace Charasiew.ECS
         }
     }
     
+    /// <summary>
+    /// 角色移动系统
+    /// </summary>
     public partial struct CharacterMoveSystem : ISystem
     {
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             foreach (var (physicsVelocity, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<PhysicsVelocity>, CharacterMoveDirection, CharacterMoveSpeed>())
             {
                 var move2 = moveDirection.value * moveSpeed.value;
-                physicsVelocity.ValueRW.Linear = new float3(move2, 0);
+                physicsVelocity.ValueRW.Linear = new float3(move2, 0);          // 更新线性速度
             }
         }
     }
