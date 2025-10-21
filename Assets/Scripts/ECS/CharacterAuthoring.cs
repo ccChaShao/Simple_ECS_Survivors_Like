@@ -4,6 +4,7 @@ using Unity.Burst;
 using Unity.Entities;
 using Unity.Mathematics;
 using Unity.Physics;
+using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -20,6 +21,13 @@ namespace Charasiew.ECS
     {
         public float value;
     }
+
+    // 定义一个组件，将其与着色器属性 "_FacintDirection" 关联，通过材质控制朝向
+    [MaterialProperty("_FacingDirection")]
+    public struct FacingDirectionOverride : IComponentData
+    {
+        public float value;
+    }
     
     public class CharacterAuthoring : MonoBehaviour
     {
@@ -31,8 +39,9 @@ namespace Charasiew.ECS
             {
                 Entity entity = GetEntity(TransformUsageFlags.Dynamic);
                 AddComponent(entity, new CharacterMoveDirection());
-                AddComponent(entity, new CharacterMoveSpeed { value = authoring.moveSpeed });
                 AddComponent(entity, new InitializeCharacterFlag());
+                AddComponent(entity, new CharacterMoveSpeed { value = authoring.moveSpeed });
+                AddComponent(entity, new FacingDirectionOverride { value = -1 });
             }
         }
     }
@@ -63,11 +72,33 @@ namespace Charasiew.ECS
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (physicsVelocity, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<PhysicsVelocity>, CharacterMoveDirection, CharacterMoveSpeed>())
+            foreach (var (physicsVelocity,facingDirectionOverride, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<PhysicsVelocity>, RefRW<FacingDirectionOverride>, CharacterMoveDirection, CharacterMoveSpeed>())
             {
+                // 更新物理系统的线性速度
                 var move2 = moveDirection.value * moveSpeed.value;
-                physicsVelocity.ValueRW.Linear = new float3(move2, 0);          // 更新线性速度
+                physicsVelocity.ValueRW.Linear = new float3(move2, 0);
+                
+                // 更新朝向
+                if (math.abs(move2.x) > 0.15f)
+                {
+                    facingDirectionOverride.ValueRW.value = math.sign(move2.x);
+                }
             }
+        }
+    }
+    
+    public partial struct GlobalTimeUpdateSystem: ISystem
+    {
+        private static int globalTimeShaderPropertyID;          // 存储全局时间的shaderID
+
+        public void OnCreate(ref SystemState state)
+        {
+            globalTimeShaderPropertyID = Shader.PropertyToID("_GlobalTime");            
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            Shader.SetGlobalFloat(globalTimeShaderPropertyID, (float)SystemAPI.Time.ElapsedTime);
         }
     }
 }
