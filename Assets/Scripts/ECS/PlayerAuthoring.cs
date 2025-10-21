@@ -2,11 +2,22 @@ using System.Collections;
 using System.Collections.Generic;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
 
 namespace Charasiew.ECS
 {
+    /// <summary>
+    /// 动画下标
+    /// </summary>
+    public enum PlayerAnimationIndex : byte
+    {
+        Movement = 0,
+        Idle = 1,
+        None = byte.MaxValue,
+    }
+    
     public struct PlayerTag : IComponentData { }
     
     public struct InititalizeCameraTargetTag : IComponentData { }
@@ -14,6 +25,12 @@ namespace Charasiew.ECS
     public struct CameraTarget : IComponentData
     {
         public UnityObjectRef<Transform> cameraTransform;           // ecs引用unity对象的类型
+    }
+
+    [MaterialProperty("_AnimationIndex")]
+    public struct AnimationIndexOverride : IComponentData
+    {
+        public float value;
     }
     
     public class PlayerAuthoring : MonoBehaviour
@@ -26,6 +43,7 @@ namespace Charasiew.ECS
                 AddComponent<PlayerTag>(entity);
                 AddComponent<InititalizeCameraTargetTag>(entity);
                 AddComponent<CameraTarget>(entity);
+                AddComponent<AnimationIndexOverride>(entity);
             }
         }
     }

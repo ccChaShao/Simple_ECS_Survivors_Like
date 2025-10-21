@@ -6,6 +6,7 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace Charasiew.ECS
@@ -72,16 +73,33 @@ namespace Charasiew.ECS
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (physicsVelocity,facingDirectionOverride, moveDirection, moveSpeed) in SystemAPI.Query<RefRW<PhysicsVelocity>, RefRW<FacingDirectionOverride>, CharacterMoveDirection, CharacterMoveSpeed>())
+            foreach (var (physicsVelocity,facingDirectionOverride, moveDirection, moveSpeed, entity) in 
+                     SystemAPI.Query<
+                         RefRW<PhysicsVelocity>, 
+                         RefRW<FacingDirectionOverride>, 
+                         RefRO<CharacterMoveDirection>, 
+                         RefRO<CharacterMoveSpeed>
+                     >().WithEntityAccess()
+                     )
             {
                 // 更新物理系统的线性速度
-                var move2 = moveDirection.value * moveSpeed.value;
-                physicsVelocity.ValueRW.Linear = new float3(move2, 0);
+                var moveStep2d = moveDirection.ValueRO.value * moveSpeed.ValueRO.value;
+                physicsVelocity.ValueRW.Linear = new float3(moveStep2d, 0);
                 
                 // 更新朝向
-                if (math.abs(move2.x) > 0.15f)
+                if (math.abs(moveStep2d.x) > 0.15f)
                 {
-                    facingDirectionOverride.ValueRW.value = math.sign(move2.x);
+                    facingDirectionOverride.ValueRW.value = math.sign(moveStep2d.x);
+                }
+                
+                // 玩家动画更新
+                if (SystemAPI.HasComponent<PlayerTag>(entity))
+                {
+                    var animationOverride = SystemAPI.GetComponentRW<AnimationIndexOverride>(entity);
+                    var animationType = math.lengthsq(moveStep2d) > float.Epsilon           // 大于一个很小的值
+                        ? PlayerAnimationIndex.Movement
+                        : PlayerAnimationIndex.Idle;          
+                    animationOverride.ValueRW.value = (float)animationType;
                 }
             }
         }
