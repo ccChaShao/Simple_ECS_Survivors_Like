@@ -107,9 +107,10 @@ namespace Charasiew.ECS
                 cooldownEnable.ValueRW = false;
             }
             // 攻击job执行
-            //TODO 元宝理解
             var attackJob = new EnemyAttackJob
             {
+                // SystemAPI.GetComponentLookup
+                // 提供一个高效、线程安全的“字典”或“查找表”，让你能够通过实体的 ID 随机读取或写入特定类型的组件数据；
                 playerTagLookup = SystemAPI.GetComponentLookup<PlayerTag>(true),
                 attackDataLoopup = SystemAPI.GetComponentLookup<EnemyAttackData>(true),
                 cooldownLookup = SystemAPI.GetComponentLookup<EnemyCoolDownExpirationTimestamp>(),
@@ -121,11 +122,10 @@ namespace Charasiew.ECS
         }
     }
 
-    //TODO 元宝理解
     [BurstCompile]
     public struct EnemyAttackJob : ICollisionEventsJob
     {
-        // 用于通过实体（Entity）高效地查找和访问特定类型的组件（Component）数据；   
+        // 系统外只能用componentLookup来进行高效查询；
         [ReadOnly] public ComponentLookup<PlayerTag> playerTagLookup;
         [ReadOnly] public ComponentLookup<EnemyAttackData> attackDataLoopup;
         public ComponentLookup<EnemyCoolDownExpirationTimestamp> cooldownLookup;
