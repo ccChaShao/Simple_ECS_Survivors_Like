@@ -90,9 +90,9 @@ namespace Charasiew.ECS
     {
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (localToWorld, cameraTarget) in SystemAPI.Query<LocalToWorld, CameraTarget>().WithAll<PlayerTag>().WithNone<InititalizeCameraTargetTag>())         // 需要玩家标签，并且已经初始化完毕了
+            foreach (var (localToWorld, cameraTarget) in SystemAPI.Query<RefRO<LocalToWorld>, RefRW<CameraTarget>>().WithAll<PlayerTag>().WithNone<InititalizeCameraTargetTag>())         // 需要玩家标签，并且已经初始化完毕了
             {
-                cameraTarget.cameraTransform.Value.position = localToWorld.Position;
+                cameraTarget.ValueRW.cameraTransform.Value.position = localToWorld.ValueRO.Position;
             }
         }
     }

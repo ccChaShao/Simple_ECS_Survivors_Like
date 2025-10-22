@@ -66,6 +66,8 @@ namespace Charasiew.ECS
                 AddComponent(entity, new CharacterMaxHitPoints { value = authoring.maxhitPoint });
                 AddComponent(entity, new CharacterCurrentHitPoint { value = authoring.maxhitPoint });
                 AddBuffer<DamgeThisFrame>(entity);
+                AddComponent(entity, new DestroyEntityFlag());
+                SetComponentEnabled<DestroyEntityFlag>(entity, false);
             }
         }
     }
@@ -151,8 +153,10 @@ namespace Charasiew.ECS
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            foreach (var (hitPoint, damgeThisFrame) in SystemAPI.Query<RefRW<CharacterCurrentHitPoint>, DynamicBuffer<DamgeThisFrame>>())
+            // 处理伤害
+            foreach (var (hitPoint, damgeThisFrame, entity) in SystemAPI.Query<RefRW<CharacterCurrentHitPoint>, DynamicBuffer<DamgeThisFrame>>().WithPresent<DestroyEntityFlag>().WithEntityAccess())
             {
+                // 伤害缓冲区处理
                 if (damgeThisFrame.IsEmpty)
                     continue;
                 foreach (var damge in damgeThisFrame)
@@ -160,6 +164,12 @@ namespace Charasiew.ECS
                     hitPoint.ValueRW.value -= damge.value;
                 }
                 damgeThisFrame.Clear();
+                // 死亡执行
+                if (hitPoint.ValueRW.value <= 0)
+                {
+                    // 打开之后就能默认通过SystemAPI.Query查询到了；
+                    SystemAPI.SetComponentEnabled<DestroyEntityFlag>(entity, true);
+                }
             }
         }
     }
