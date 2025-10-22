@@ -163,3 +163,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackPrefab: {fileID: 3778312953427084395, guid: 9082877cfef684549b08a9367043f837, type: 3}
   cooldownTime: 0.5
+  detectionSize: 10

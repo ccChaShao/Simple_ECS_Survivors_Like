@@ -1,7 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
+using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
 using UnityEngine;
@@ -34,6 +36,8 @@ namespace Charasiew.ECS
     {
         public Entity AttackPrefab;
         public float coolDownTime;
+        public float3 detectionSize;            // 检测范围
+        public CollisionFilter collisionFilter;
     }
 
     public struct PlayerCooldownExpirationTimestamp : IComponentData
@@ -47,6 +51,7 @@ namespace Charasiew.ECS
         [Header("攻击数据")]
         public GameObject attackPrefab;
         public float cooldownTime;
+        public float detectionSize;
         
         private class Baker: Baker<PlayerAuthoring>
         {
@@ -57,10 +62,20 @@ namespace Charasiew.ECS
                 AddComponent<InititalizeCameraTargetTag>(entity);
                 AddComponent<CameraTarget>(entity);
                 AddComponent<AnimationIndexOverride>(entity);
+
+                var enemyLayer = LayerMask.NameToLayer("Enemy");    // 返回的是index序号；
+                var enemyLayerMask = (uint)math.pow(2, enemyLayer);     // 返回的是十进制后的掩码（需要执行2的序号次方）；
+                var attackCollisionFilter = new CollisionFilter
+                {
+                    BelongsTo = uint.MaxValue,
+                    CollidesWith = enemyLayerMask
+                };
                 AddComponent(entity, new PlayerAttackData
                 {
                     AttackPrefab = GetEntity(authoring.attackPrefab, TransformUsageFlags.Dynamic),
-                    coolDownTime = authoring.cooldownTime
+                    coolDownTime = authoring.cooldownTime,
+                    detectionSize = new float3(authoring.detectionSize, authoring.detectionSize, authoring.detectionSize),
+                    collisionFilter = attackCollisionFilter,
                 });
                 AddComponent<PlayerCooldownExpirationTimestamp>(entity);
             }
@@ -140,6 +155,7 @@ namespace Charasiew.ECS
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<BeginInitializationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<PhysicsWorldSingleton>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -147,16 +163,55 @@ namespace Charasiew.ECS
             var elapsedTime = SystemAPI.Time.ElapsedTime;
             var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            var physicsWorldSingleton = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
             foreach (var (cooldownExpirationTimestamp, attackData, transform) in 
                      SystemAPI.Query<RefRW<PlayerCooldownExpirationTimestamp>, RefRO<PlayerAttackData>, RefRO<LocalTransform>>())
             {
                 if (cooldownExpirationTimestamp.ValueRO.value > elapsedTime)
                     continue;
                 var spawnPosition = transform.ValueRO.Position;
+
+                //TODO 元宝学习
+                // aabb包围盒，用于收集所有玩家感知范围内的敌人
+                var aabbInput = new OverlapAabbInput
+                {
+                    Aabb = new Aabb
+                    {
+                        Min = spawnPosition - attackData.ValueRO.detectionSize,
+                        Max = spawnPosition + attackData.ValueRO.detectionSize
+                    },
+                    Filter = attackData.ValueRO.collisionFilter,
+                };
+                var overlapHits = new NativeList<int>(state.WorldUpdateAllocator);
+                bool hasEnemy = physicsWorldSingleton.OverlapAabb(aabbInput, ref overlapHits);
+                if (!hasEnemy)
+                {
+                    continue;
+                }
+                // 找到警戒范围内最近的敌人
+                var maxDistanceSq = float.MaxValue;
+                var closestEnemyPosition = float3.zero;
+                foreach (var overlapHit in overlapHits)
+                {
+                    var curEnemyPosition = physicsWorldSingleton.Bodies[overlapHit].WorldFromBody.pos;
+                    var distanceToPlayerSq = math.distance(spawnPosition.xy, curEnemyPosition.xy);
+                    if (distanceToPlayerSq < maxDistanceSq)
+                    {
+                        // 更新数据
+                        maxDistanceSq = distanceToPlayerSq;
+                        closestEnemyPosition = curEnemyPosition;
+                    }
+                }
+                
+                //TODO 元宝学习
+                var vectorToClosestEnemy = closestEnemyPosition - spawnPosition;
+                var angleToClosestEnemy = math.atan2(vectorToClosestEnemy.y, vectorToClosestEnemy.x);
+                var spawnOrientation = quaternion.Euler(0.0f, 0.0f, angleToClosestEnemy);
+                
                 // 要知道，命令缓冲区仅仅是记录我们的操作，此时并不会马上实例化出来；
                 var newAttack = ecb.Instantiate(attackData.ValueRO.AttackPrefab);
                 // 更新位置
-                ecb.SetComponent(newAttack, LocalTransform.FromPosition(spawnPosition));
+                ecb.SetComponent(newAttack, LocalTransform.FromPositionRotation(spawnPosition, spawnOrientation));
                 // 更新冷却
                 cooldownExpirationTimestamp.ValueRW.value = elapsedTime + attackData.ValueRO.coolDownTime;
             }
