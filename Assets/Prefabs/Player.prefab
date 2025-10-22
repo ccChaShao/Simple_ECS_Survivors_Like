@@ -161,3 +161,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 7cbd768027c0e4a4a931930bd73607c5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  attackPrefab: {fileID: 3778312953427084395, guid: 9082877cfef684549b08a9367043f837, type: 3}
+  cooldownTime: 0.5

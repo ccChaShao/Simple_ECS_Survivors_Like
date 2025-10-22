@@ -8,9 +8,6 @@ using UnityEngine;
 
 namespace Charasiew.ECS
 {
-    /// <summary>
-    /// 动画下标
-    /// </summary>
     public enum PlayerAnimationIndex : byte
     {
         Movement = 0,
@@ -32,10 +29,25 @@ namespace Charasiew.ECS
     {
         public float value;
     }
+
+    public struct PlayerAttackData : IComponentData
+    {
+        public Entity AttackPrefab;
+        public float coolDownTime;
+    }
+
+    public struct PlayerCooldownExpirationTimestamp : IComponentData
+    {
+        public double value;
+    }
     
     [RequireComponent(typeof(CharacterAuthoring))]
     public class PlayerAuthoring : MonoBehaviour
     {
+        [Header("攻击数据")]
+        public GameObject attackPrefab;
+        public float cooldownTime;
+        
         private class Baker: Baker<PlayerAuthoring>
         {
             public override void Bake(PlayerAuthoring authoring)
@@ -45,6 +57,12 @@ namespace Charasiew.ECS
                 AddComponent<InititalizeCameraTargetTag>(entity);
                 AddComponent<CameraTarget>(entity);
                 AddComponent<AnimationIndexOverride>(entity);
+                AddComponent(entity, new PlayerAttackData
+                {
+                    AttackPrefab = GetEntity(authoring.attackPrefab, TransformUsageFlags.Dynamic),
+                    coolDownTime = authoring.cooldownTime
+                });
+                AddComponent<PlayerCooldownExpirationTimestamp>(entity);
             }
         }
     }
@@ -113,6 +131,34 @@ namespace Charasiew.ECS
             foreach (var direction in SystemAPI.Query<RefRW<CharacterMoveDirection>>().WithAll<PlayerTag>())
             {
                 direction.ValueRW.value = curInput;
+            }
+        }
+    }
+    
+    public partial struct PlayerAttackSystem : ISystem
+    {
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<BeginInitializationEntityCommandBufferSystem.Singleton>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var elapsedTime = SystemAPI.Time.ElapsedTime;
+            var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            foreach (var (cooldownExpirationTimestamp, attackData, transform) in 
+                     SystemAPI.Query<RefRW<PlayerCooldownExpirationTimestamp>, RefRO<PlayerAttackData>, RefRO<LocalTransform>>())
+            {
+                if (cooldownExpirationTimestamp.ValueRO.value > elapsedTime)
+                    continue;
+                var spawnPosition = transform.ValueRO.Position;
+                // 要知道，命令缓冲区仅仅是记录我们的操作，此时并不会马上实例化出来；
+                var newAttack = ecb.Instantiate(attackData.ValueRO.AttackPrefab);
+                // 更新位置
+                ecb.SetComponent(newAttack, LocalTransform.FromPosition(spawnPosition));
+                // 更新冷却
+                cooldownExpirationTimestamp.ValueRW.value = elapsedTime + attackData.ValueRO.coolDownTime;
             }
         }
     }
