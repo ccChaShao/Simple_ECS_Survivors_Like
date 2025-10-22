@@ -12,6 +12,7 @@ GameObject:
   - component: {fileID: 3695702918805628967}
   - component: {fileID: 2540144798860582069}
   - component: {fileID: 7532649824114825660}
+  - component: {fileID: -4275336813146054757}
   m_Layer: 8
   m_Name: PlasmaBlast
   m_TagString: Untagged
@@ -105,3 +106,17 @@ SphereCollider:
   serializedVersion: 3
   m_Radius: 0.4362473
   m_Center: {x: 0, y: 0, z: 0}
+--- !u!114 &-4275336813146054757
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3778312953427084395}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 698c3018d4b8434c84f142b87a77f7b6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  moveSpeed: 0
+  attackDamge: 0
