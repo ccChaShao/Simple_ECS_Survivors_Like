@@ -1,3 +1,4 @@
+using TMG.Survivors;
 using Unity.Entities;
 using UnityEngine;
 
@@ -26,6 +27,10 @@ namespace Charasiew.ECS
             // 默认情况下，当组件的启用状态（enable）为 false时，SystemAPI.Query是查不出该实体的。
             foreach (var (_, entity) in SystemAPI.Query<RefRO<DestroyEntityFlag>>().WithEntityAccess())
             {
+                if (SystemAPI.HasComponent<PlayerTag>(entity))
+                {
+                    GameUIController.Instance.ShowGameOverUI();
+                }
                 endEcb.DestroyEntity(entity);
             }
         }
