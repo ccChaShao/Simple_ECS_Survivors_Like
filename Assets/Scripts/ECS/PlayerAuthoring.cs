@@ -163,6 +163,7 @@ namespace Charasiew.ECS
             var elapsedTime = SystemAPI.Time.ElapsedTime;
             var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            // 提供对整个物理世界（刚体、碰撞体等）状态的安全访问
             var physicsWorldSingleton = SystemAPI.GetSingleton<PhysicsWorldSingleton>();
             foreach (var (cooldownExpirationTimestamp, attackData, transform) in 
                      SystemAPI.Query<RefRW<PlayerCooldownExpirationTimestamp>, RefRO<PlayerAttackData>, RefRO<LocalTransform>>())
@@ -171,8 +172,7 @@ namespace Charasiew.ECS
                     continue;
                 var spawnPosition = transform.ValueRO.Position;
 
-                //TODO 元宝学习
-                // aabb包围盒，用于收集所有玩家感知范围内的敌人
+                // 定义一个轴对齐包围盒（AABB），用于查询该区域内的所有碰撞体
                 var aabbInput = new OverlapAabbInput
                 {
                     Aabb = new Aabb
@@ -182,13 +182,12 @@ namespace Charasiew.ECS
                     },
                     Filter = attackData.ValueRO.collisionFilter,
                 };
+                // 查询所有重叠的Entity；
                 var overlapHits = new NativeList<int>(state.WorldUpdateAllocator);
                 bool hasEnemy = physicsWorldSingleton.OverlapAabb(aabbInput, ref overlapHits);
                 if (!hasEnemy)
-                {
                     continue;
-                }
-                // 找到警戒范围内最近的敌人
+                // 找到警戒范围内最近的敌人；
                 var maxDistanceSq = float.MaxValue;
                 var closestEnemyPosition = float3.zero;
                 foreach (var overlapHit in overlapHits)
@@ -202,9 +201,8 @@ namespace Charasiew.ECS
                         closestEnemyPosition = curEnemyPosition;
                     }
                 }
-                
-                //TODO 元宝学习
                 var vectorToClosestEnemy = closestEnemyPosition - spawnPosition;
+                // 计算上一步得到的方向向量与正X轴之间夹角的弧度值；
                 var angleToClosestEnemy = math.atan2(vectorToClosestEnemy.y, vectorToClosestEnemy.x);
                 var spawnOrientation = quaternion.Euler(0.0f, 0.0f, angleToClosestEnemy);
                 
