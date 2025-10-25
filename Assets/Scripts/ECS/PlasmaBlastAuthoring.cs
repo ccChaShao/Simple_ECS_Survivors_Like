@@ -27,6 +27,8 @@ namespace Charasiew.ECS
                     moveSpeed = authoring.moveSpeed,
                     attackDamge = authoring.attackDamge,
                 });
+                AddComponent<DestroyEntityFlag>(entity);
+                SetComponentEnabled<DestroyEntityFlag>(entity, false);
             }
         }
     }
@@ -60,7 +62,8 @@ namespace Charasiew.ECS
             {
                 plasmaBlastLookup = SystemAPI.GetComponentLookup<PlasmaBlastData>(true),
                 enemyLookup = SystemAPI.GetComponentLookup<EnemyTag>(true),
-                damgeThisFrameLookup = SystemAPI.GetBufferLookup<DamgeThisFrame>()
+                damgeThisFrameLookup = SystemAPI.GetBufferLookup<DamgeThisFrame>(),
+                destroyEntityLookup = SystemAPI.GetComponentLookup<DestroyEntityFlag>(),
             };
 
             // 因为量少，所以用.Schedule串行处理
@@ -74,6 +77,7 @@ namespace Charasiew.ECS
         [ReadOnly] public ComponentLookup<PlasmaBlastData> plasmaBlastLookup;
         [ReadOnly] public ComponentLookup<EnemyTag> enemyLookup;
         public BufferLookup<DamgeThisFrame> damgeThisFrameLookup;
+        public ComponentLookup<DestroyEntityFlag> destroyEntityLookup;
         
         public void Execute(TriggerEvent triggerEvent)
         {
@@ -98,6 +102,8 @@ namespace Charasiew.ECS
             var attackDamge = plasmaBlastLookup[plasmaBlastEntity].attackDamge;
             var enemyDamgeBuffer = damgeThisFrameLookup[enemyEntity];
             enemyDamgeBuffer.Add(new DamgeThisFrame { value = attackDamge });
+            
+            destroyEntityLookup.SetComponentEnabled(plasmaBlastEntity, true);
         }
     }
 }
