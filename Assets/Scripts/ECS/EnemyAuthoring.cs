@@ -79,6 +79,7 @@ namespace Charasiew.ECS
             // 处理依赖：
             // 输入依赖（参数部分）：你的新Job会等待这些工作完成后才开始执行，从而避免访问尚未准备就绪的数据；
             // 输出依赖（赋值部分）：后续的任何操作如果需要依赖本系统的数据，必须等待我这个新Job完成；
+            // 因为量大，所以用.ScheduleParallel进行并行运算
             state.Dependency = moveToPlayerJob.ScheduleParallel(state.Dependency);          
         }
     }

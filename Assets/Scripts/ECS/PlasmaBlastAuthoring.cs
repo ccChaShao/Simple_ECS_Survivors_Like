@@ -1,6 +1,7 @@
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Physics;
+using Unity.Physics.Systems;
 using Unity.Transforms;
 using UnityEngine;
 
@@ -43,9 +44,29 @@ namespace Charasiew.ECS
         }
     }
     
+    [UpdateInGroup(typeof(PhysicsSystemGroup))]
+    [UpdateAfter(typeof(PhysicsSimulationGroup))]
+    [UpdateBefore(typeof(AfterPhysicsSystemGroup))]
     public partial struct PlasmaBlastAttackSystem : ISystem
     {
-        
+        public void OnCreate(ref SystemState state)
+        {
+            state.RequireForUpdate<SimulationSingleton>();
+        }
+
+        public void OnUpdate(ref SystemState state)
+        {
+            var attackJob = new PlasmaBlastAttackJob()
+            {
+                plasmaBlastLookup = SystemAPI.GetComponentLookup<PlasmaBlastData>(true),
+                enemyLookup = SystemAPI.GetComponentLookup<EnemyTag>(true),
+                damgeThisFrameLookup = SystemAPI.GetBufferLookup<DamgeThisFrame>()
+            };
+
+            // 因为量少，所以用.Schedule串行处理
+            var simulationSingleton = SystemAPI.GetSingleton<SimulationSingleton>();
+            state.Dependency = attackJob.Schedule(simulationSingleton, state.Dependency);
+        }
     }
 
     public struct PlasmaBlastAttackJob : ITriggerEventsJob
@@ -70,7 +91,13 @@ namespace Charasiew.ECS
                 enemyEntity = triggerEvent.EntityA;
             }
             else
+            {
                 return;
+            }
+
+            var attackDamge = plasmaBlastLookup[plasmaBlastEntity].attackDamge;
+            var enemyDamgeBuffer = damgeThisFrameLookup[enemyEntity];
+            enemyDamgeBuffer.Add(new DamgeThisFrame { value = attackDamge });
         }
     }
 }
