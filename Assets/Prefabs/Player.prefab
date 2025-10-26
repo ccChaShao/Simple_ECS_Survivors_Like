@@ -164,3 +164,4 @@ MonoBehaviour:
   attackPrefab: {fileID: 3778312953427084395, guid: 9082877cfef684549b08a9367043f837, type: 3}
   cooldownTime: 0.5
   detectionSize: 10
+  worldUIPrefab: {fileID: 6848332979229617546, guid: 1b8519ce5d7dc6e48bb4d207983180ca, type: 3}

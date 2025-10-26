@@ -7,7 +7,9 @@ using Unity.Mathematics;
 using Unity.Physics;
 using Unity.Rendering;
 using Unity.Transforms;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Charasiew.ECS
 {
@@ -52,6 +54,18 @@ namespace Charasiew.ECS
     }
     
     public struct UpdateGemUIFlag : IComponentData, IEnableableComponent { }
+
+    //TODO 元宝
+    public struct PlayerWorldUI : ICleanupComponentData
+    {
+        public UnityObjectRef<Transform> canvasTransform;
+        public UnityObjectRef<Slider> healthBarSlider;
+    }
+
+    public struct PlayerWorldUIPrefab : IComponentData
+    {
+        public UnityObjectRef<GameObject> value;
+    }
     
     [RequireComponent(typeof(CharacterAuthoring))]
     public class PlayerAuthoring : MonoBehaviour
@@ -60,6 +74,9 @@ namespace Charasiew.ECS
         public GameObject attackPrefab;
         public float cooldownTime;
         public float detectionSize;
+        
+        [Header("UI")]
+        public GameObject worldUIPrefab;
         
         private class Baker: Baker<PlayerAuthoring>
         {
@@ -70,7 +87,6 @@ namespace Charasiew.ECS
                 AddComponent<InititalizeCameraTargetTag>(entity);
                 AddComponent<CameraTarget>(entity);
                 AddComponent<AnimationIndexOverride>(entity);
-
                 var enemyLayer = LayerMask.NameToLayer("Enemy");    // 返回的是index序号；
                 var enemyLayerMask = (uint)math.pow(2, enemyLayer);     // 返回的是十进制后的掩码（需要执行2的序号次方）；
                 var attackCollisionFilter = new CollisionFilter
@@ -88,6 +104,10 @@ namespace Charasiew.ECS
                 AddComponent<PlayerCooldownExpirationTimestamp>(entity);
                 AddComponent<GemsCollectedCount>(entity);
                 AddComponent<UpdateGemUIFlag>(entity);
+                AddComponent(entity, new PlayerWorldUIPrefab
+                {
+                    value = authoring.worldUIPrefab,
+                });
             }
         }
     }
@@ -235,6 +255,42 @@ namespace Charasiew.ECS
                 GameUIController.Instance.UpdateGemsCollectedText(gemCount.ValueRO.value);
                 shouldUpdateUI.ValueRW = false;
             }
+        }
+    }
+
+    public partial struct PlayerWorldUISystem : ISystem
+    {
+        public void OnUpdate(ref SystemState state)
+        {
+            var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+            foreach (var (uiPrefab, entity) in SystemAPI.Query<RefRO<PlayerWorldUIPrefab>>().WithNone<PlayerWorldUI>().WithEntityAccess())
+            {
+                var newWorldUI = Object.Instantiate(uiPrefab.ValueRO.value).GameObject();
+                ecb.AddComponent(entity, new PlayerWorldUI
+                {
+                    canvasTransform = newWorldUI.transform,
+                    healthBarSlider = newWorldUI.GetComponentInChildren<Slider>(),
+                });
+            }
+
+            foreach (var (transform, worldUI, currentHitPoint, maxHitPoints) in SystemAPI.Query<RefRO<LocalToWorld>, RefRW<PlayerWorldUI>, RefRO<CharacterCurrentHitPoint>, RefRO<CharacterMaxHitPoints>>())
+            {
+                worldUI.ValueRW.canvasTransform.Value.position = transform.ValueRO.Position;
+                var healthValue = currentHitPoint.ValueRO.value / maxHitPoints.ValueRO.value;
+                worldUI.ValueRW.healthBarSlider.Value.value = healthValue;
+            }
+            
+            foreach (var (worldUI, entity) in SystemAPI.Query<RefRO<PlayerWorldUI>>().WithNone<LocalToWorld>().WithEntityAccess())
+            {
+                if (worldUI.ValueRO.canvasTransform.Value != null)
+                {
+                    Object.Destroy(worldUI.ValueRO.canvasTransform.Value.gameObject);
+                }
+                
+                ecb.RemoveComponent<PlayerWorldUI>(entity);
+            }
+            
+            ecb.Playback(state.EntityManager);
         }
     }
 }
