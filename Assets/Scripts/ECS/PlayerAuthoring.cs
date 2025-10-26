@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMG.Survivors;
 using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
@@ -44,6 +45,13 @@ namespace Charasiew.ECS
     {
         public double value;
     }
+
+    public struct GemsCollectedCount : IComponentData
+    {
+        public int value;
+    }
+    
+    public struct UpdateGemUIFlag : IComponentData, IEnableableComponent { }
     
     [RequireComponent(typeof(CharacterAuthoring))]
     public class PlayerAuthoring : MonoBehaviour
@@ -78,6 +86,8 @@ namespace Charasiew.ECS
                     collisionFilter = attackCollisionFilter,
                 });
                 AddComponent<PlayerCooldownExpirationTimestamp>(entity);
+                AddComponent<GemsCollectedCount>(entity);
+                AddComponent<UpdateGemUIFlag>(entity);
             }
         }
     }
@@ -212,6 +222,18 @@ namespace Charasiew.ECS
                 ecb.SetComponent(newAttack, LocalTransform.FromPositionRotation(spawnPosition, spawnOrientation));
                 // 更新冷却
                 cooldownExpirationTimestamp.ValueRW.value = elapsedTime + attackData.ValueRO.coolDownTime;
+            }
+        }
+    }
+
+    public partial struct UpdateGemUISystem : ISystem
+    {
+        public void OnUpdate(ref SystemState state)
+        {
+            foreach (var (gemCount, shouldUpdateUI) in SystemAPI.Query<RefRO<GemsCollectedCount>, EnabledRefRW<UpdateGemUIFlag>>())
+            {
+                GameUIController.Instance.UpdateGemsCollectedText(gemCount.ValueRO.value);
+                shouldUpdateUI.ValueRW = false;
             }
         }
     }
