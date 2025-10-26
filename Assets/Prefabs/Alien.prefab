@@ -163,3 +163,4 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   attackDamge: 5
   cooldownTime: 1
+  gemPrefab: {fileID: 2016061149699774935, guid: 30cc5099bb5e0f141a249cc4a0113133, type: 3}

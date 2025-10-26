@@ -1,5 +1,6 @@
 using TMG.Survivors;
 using Unity.Entities;
+using Unity.Transforms;
 using UnityEngine;
 
 namespace Charasiew.ECS
@@ -13,6 +14,7 @@ namespace Charasiew.ECS
         public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+            state.RequireForUpdate<BeginInitializationEntityCommandBufferSystem.Singleton>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -23,13 +25,26 @@ namespace Charasiew.ECS
             // 从上面获取的系统中创建了一个具体的 EntityCommandBuffer。
             // 你可以把它想象成一个“待办事项列表”。在当前帧（OnUpdate方法中），我们只是把想要执行的销毁命令“记录”在这个列表上，而不是立即执行。
             // 将这个“待办事项列表”记录在模拟阶段系统中。
-            EntityCommandBuffer endEcb = endEcbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            var endEcb = endEcbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            // 初始化缓冲区
+            var beginEcbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
+            var beginEcb = beginEcbSystem.CreateCommandBuffer(state.WorldUnmanaged);
+            
             // 默认情况下，当组件的启用状态（enable）为 false时，SystemAPI.Query是查不出该实体的。
             foreach (var (_, entity) in SystemAPI.Query<RefRO<DestroyEntityFlag>>().WithEntityAccess())
             {
+                // 玩家死亡
                 if (SystemAPI.HasComponent<PlayerTag>(entity))
                 {
                     GameUIController.Instance.ShowGameOverUI();
+                }
+                // 宝石奖励死亡
+                if (SystemAPI.HasComponent<GemPrefab>(entity))
+                {
+                    var gemPrefab = SystemAPI.GetComponent<GemPrefab>(entity).value;
+                    var newGem = beginEcb.Instantiate(gemPrefab);
+                    var spawnPosition = SystemAPI.GetComponent<LocalToWorld>(entity).Position;
+                    beginEcb.SetComponent(newGem, LocalTransform.FromPosition(spawnPosition));
                 }
                 endEcb.DestroyEntity(entity);
             }

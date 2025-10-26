@@ -21,12 +21,18 @@ namespace Charasiew.ECS
     {
         public double value;
     }
+
+    public struct GemPrefab : IComponentData
+    {
+        public Entity value;
+    }
     
     [RequireComponent(typeof(CharacterAuthoring))]
     public class EnemyAuthoring : MonoBehaviour
     {
         public float attackDamge;
         public float cooldownTime;
+        public GameObject gemPrefab;
         
         private class Baker : Baker<EnemyAuthoring>
         {
@@ -37,6 +43,10 @@ namespace Charasiew.ECS
                 AddComponent(entity, new EnemyAttackData { hitPoints = authoring.attackDamge, cooldownTime = authoring.cooldownTime });
                 AddComponent(entity, new EnemyCoolDownExpirationTimestamp());
                 SetComponentEnabled<EnemyCoolDownExpirationTimestamp>(entity, false);
+                AddComponent(entity, new GemPrefab
+                {
+                    value = GetEntity(authoring.gemPrefab, TransformUsageFlags.Dynamic)
+                });
             }
         }
     }
