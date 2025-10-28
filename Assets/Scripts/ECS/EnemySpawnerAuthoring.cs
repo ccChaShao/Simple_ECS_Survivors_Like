@@ -59,11 +59,8 @@ namespace Charasiew.ECS
         public void OnUpdate(ref SystemState state)
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
-            //TODO 元宝
-            #region 元宝 
             var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
-            #endregion
 
             var playerEntity = SystemAPI.GetSingletonEntity<PlayerTag>();
             var playerPositon = SystemAPI.GetComponent<LocalTransform>(playerEntity).Position;
