@@ -59,11 +59,8 @@ namespace Charasiew.ECS
         public void OnUpdate(ref SystemState state)
         {
             var deltaTime = SystemAPI.Time.DeltaTime;
-            //TODO 元宝
-            #region 元宝 
             var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
-            #endregion
 
             var playerEntity = SystemAPI.GetSingletonEntity<PlayerTag>();
             var playerPositon = SystemAPI.GetComponent<LocalTransform>(playerEntity).Position;
@@ -76,16 +73,14 @@ namespace Charasiew.ECS
                 spawnState.ValueRW.spawnTimer = spawnData.ValueRO.spawnInterval;
 
                 var newEnemy = ecb.Instantiate(spawnData.ValueRO.enemyPrefab);
-                //TODO 元宝
-                #region 元宝 
                 var spawnAngle = spawnState.ValueRW.random.NextFloat(0.0f, math.TAU);
+                // 因为参考坐标是Y轴（up为正方向，0度=向上）
                 var spawnDir = new float3()
                 {
                     x = math.sin(spawnAngle),
                     y = math.cos(spawnAngle),
                     z = 0,
                 };
-                #endregion
                 var spawnPoint = spawnDir * spawnData.ValueRO.spawnDistance + playerPositon;
                 ecb.SetComponent(newEnemy, LocalTransform.FromPosition(spawnPoint));
                 
