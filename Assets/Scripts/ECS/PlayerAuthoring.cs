@@ -141,6 +141,7 @@ namespace Charasiew.ECS
                 ecb.RemoveComponent<InititalizeCameraTargetTag>(entity);            // 这里移除掉组件（结构性改变，所以使用ecb进行延迟性批量改动）
             }
 
+            // 结构性变更（如创建/销毁实体、添加/移除组件），所以用ecb
             ecb.Playback(state.EntityManager);
         }
     }
@@ -193,6 +194,7 @@ namespace Charasiew.ECS
         public void OnUpdate(ref SystemState state)
         {
             var elapsedTime = SystemAPI.Time.ElapsedTime;
+            // 使用ecs自动管理的ecb系统，会在其固定的更新点自动调用playback
             var ecbSystem = SystemAPI.GetSingleton<BeginInitializationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSystem.CreateCommandBuffer(state.WorldUnmanaged);
             // 提供对整个物理世界（刚体、碰撞体等）状态的安全访问
