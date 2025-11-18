@@ -55,16 +55,15 @@ namespace Charasiew.ECS
     
     public struct UpdateGemUIFlag : IComponentData, IEnableableComponent { }
 
-    //TODO 元宝
     public struct PlayerWorldUI : ICleanupComponentData
     {
-        public UnityObjectRef<Transform> canvasTransform;
-        public UnityObjectRef<Slider> healthBarSlider;
+        public UnityObjectRef<Transform> canvasTransform; // 画布引用
+        public UnityObjectRef<Slider> healthBarSlider; // 生命值滑条       
     }
 
     public struct PlayerWorldUIPrefab : IComponentData
     {
-        public UnityObjectRef<GameObject> value;
+        public UnityObjectRef<GameObject> value; // 角色UI根节点
     }
     
     [RequireComponent(typeof(CharacterAuthoring))]
@@ -266,6 +265,8 @@ namespace Charasiew.ECS
         public void OnUpdate(ref SystemState state)
         {
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
+            
+            // 为角色增加生命值UI
             foreach (var (uiPrefab, entity) in SystemAPI.Query<RefRO<PlayerWorldUIPrefab>>().WithNone<PlayerWorldUI>().WithEntityAccess())
             {
                 var newWorldUI = Object.Instantiate(uiPrefab.ValueRO.value).GameObject();
@@ -276,13 +277,16 @@ namespace Charasiew.ECS
                 });
             }
 
+            // UI数据更新
             foreach (var (transform, worldUI, currentHitPoint, maxHitPoints) in SystemAPI.Query<RefRO<LocalToWorld>, RefRW<PlayerWorldUI>, RefRO<CharacterCurrentHitPoint>, RefRO<CharacterMaxHitPoints>>())
             {
+                // UI位置更新
                 worldUI.ValueRW.canvasTransform.Value.position = transform.ValueRO.Position;
                 var healthValue = currentHitPoint.ValueRO.value / maxHitPoints.ValueRO.value;
                 worldUI.ValueRW.healthBarSlider.Value.value = healthValue;
             }
             
+            // 角色增加生命值UI之后，进行移除（避免重复实例化UI）
             foreach (var (worldUI, entity) in SystemAPI.Query<RefRO<PlayerWorldUI>>().WithNone<LocalToWorld>().WithEntityAccess())
             {
                 if (worldUI.ValueRO.canvasTransform.Value != null)
