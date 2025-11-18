@@ -137,7 +137,7 @@ namespace Charasiew.ECS
             var ecb = new EntityCommandBuffer(state.WorldUpdateAllocator);
             foreach (var (cameraTarget, entity) in SystemAPI.Query<RefRW<CameraTarget>>().WithAll<InititalizeCameraTargetTag, PlayerTag>().WithEntityAccess())
             {
-                // 将自身位置同步到相机目标位置；
+                // 将mono对象的引用同步到ecs数据中；
                 cameraTarget.ValueRW.cameraTransform = cameraTargetTransform;
                 ecb.RemoveComponent<InititalizeCameraTargetTag>(entity);            // 这里移除掉组件（结构性改变，所以使用ecb进行延迟性批量改动）
             }
@@ -157,7 +157,7 @@ namespace Charasiew.ECS
         {
             foreach (var (localToWorld, cameraTarget) in SystemAPI.Query<RefRO<LocalToWorld>, RefRW<CameraTarget>>().WithAll<PlayerTag>().WithNone<InititalizeCameraTargetTag>())         // 需要玩家标签，并且已经初始化完毕了
             {
-                // 讲位置同步过去
+                // 每帧将ecs玩家的位置同步到mono的跟随对象中；
                 cameraTarget.ValueRW.cameraTransform.Value.position = localToWorld.ValueRO.Position;
             }
         }
